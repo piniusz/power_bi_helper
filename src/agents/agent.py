@@ -2,48 +2,32 @@
 from openai import OpenAI
 from dotenv import load_dotenv, find_dotenv
 import os
-from src.infrastructure.llm_clients.open_ai_client import OpenAiClient
-
-# %%
-
-load_dotenv(find_dotenv()) # Use the found path explicitly if needed
-google_api_key = os.getenv('GOOGLE_API_KEY')
-# %%
-from openai import OpenAI
-from dotenv import load_dotenv, find_dotenv
-import os
 import inspect
 import json
 import logging
-
 # %%
 
 load_dotenv(find_dotenv()) # Use the found path explicitly if needed
 google_api_key = os.getenv('GOOGLE_API_KEY')
 log = logging.getLogger()
-log.setLevel(logging.INFO)
-# Add handler to display logs in console
 handler = logging.StreamHandler()
 formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 handler.setFormatter(formatter)
 log.addHandler(handler)
-# %%
-client = OpenAI(
-    api_key=google_api_key,
-    base_url="https://generativelanguage.googleapis.com/v1beta/"
-)
-# %%
 
 class Agent:
     def __init__(self, 
-                 model_name="gemini-2.0-flash", 
+                 api_key:str,
+                 api_url:str = None,
+                 model_name:str="gemini-2.0-flash", 
                  tools:list=[], 
                  system_instruction:str="",
                  temperature:int=1,
-                 keep_chat_history:bool = True):
+                 keep_chat_history:bool = True,
+    ):
         
         self.model_name = model_name
-        self.client = self._get_client()
+        self.client = self._get_client(api_key)
         self.tools:list = self._get_tools_list(tools)
         self.messages:list = [
         {"role": "system", "content": system_instruction}
@@ -52,18 +36,27 @@ class Agent:
         self.avaible_functions = {f.__name__:f for f in tools}
         self.keep_chat_history = keep_chat_history
 
-    def __call__(self, message:str):
-        log.info(f"User message: {message}")
-        self._send_message(message)
-        while self.messages[-1].tool_calls:
-            log.info(f"Tool calls: {self.messages[-1].tool_calls}")
-            self._use_tools(self.messages[-1].tool_calls)
-            self._send_message()
-        if self.messages[-1].content:
-            print(self.messages[-1].content)
-        if not self.keep_chat_history:
-            self.messages = self.messages[0]
+    def __call__(self, user_message:str):
+        log.info(f"User message: {user_message}")
+        response = self._send_message(user_message=user_message)
+        while response.tool_calls:
+            log.info(f"Tool calls: {response.tool_calls}")
+            self._use_tools(response.tool_calls)
+            response = self._send_message()
+        self.messages.append({"role": "assistant", "content": response.content})
 
+    def _send_message(self, user_message:str=None):
+        if user_message is not None:
+            self.messages.append({"role": "user", "content": user_message})
+        completion = self.client.beta.chat.completions.parse(
+            messages=self.messages,
+            model = self.model_name,
+            tools=self.tools,
+            tool_choice="auto",
+            temperature = self.temperature
+        )
+        response = completion.choices[0].message
+        return response
 
     
     def _call_function(self, name, args:dict):
@@ -79,24 +72,13 @@ class Agent:
             self.messages.append({"role": "tool", "tool_call_id": tool_call.id, "content": json.dumps(result)}
     )
 
-    def _send_message(self, user_input:str=None):
-        if user_input:
-            self.messages.append({"role":"user", "content":user_input})
-        completion = client.beta.chat.completions.parse(
-            messages=self.messages,
-            model = self.model_name,
-            tools=self.tools,
-            tool_choice="auto",
-            temperature = self.temperature
-        )
-        self.messages.append(completion.choices[0].message)
-
-    def _get_client(self, ) ->OpenAI:
+    def _get_client(self, api_key:str, base_url:str="https://generativelanguage.googleapis.com/v1beta/openai/") ->OpenAI:
         client = OpenAI(
-            api_key=google_api_key,
-            base_url="https://generativelanguage.googleapis.com/v1beta/openai/"
+            api_key=api_key,
+            base_url=base_url
         )
         return client
+    
     def _bind_tool(self,func) -> dict:
         sig = inspect.signature(func)
         required = []
@@ -171,13 +153,6 @@ def multiplication(no:int, no2:int):
         int or float: The product of the two numbers.
     """
     return no*no2
-prompt = """
-    You are a simple calculator. You know how to add 2 integers  and how to multiply 2 integers. 
-    For this you will always use your avaible tools: addition and multiplication.
-    Knowing that you decide whether you can answer user question using your tool, if you can't you politely appoligize and say you can't answer that question
-"""
-tools = [addition, multiplication]
-chat = Agent(system_instruction=prompt, tools=tools, temperature=0.3)
-chat("What would be a result if I would first add 5 and 9, then add to it 30 then wanted to multiply it by result of 9 and 3?")
-# %%
+
+
 # %%

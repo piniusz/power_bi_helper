@@ -19,7 +19,7 @@ dependencies = [
 ]
 
 [tool.poetry]
-packages = [{include = "travel_agent", from = "src"}]
+packages = [{include = "src"}]
 
 
 [build-system]

@@ -1,1 +1,3 @@
 /.env
+.temp.py
+test_data

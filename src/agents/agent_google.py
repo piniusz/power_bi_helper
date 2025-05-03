@@ -35,6 +35,8 @@ class Agent:
         self.avaible_functions = {f.__name__:f for f in tools}
         self.last_assistant_message = None
         self._clean_files()
+        self.input_tokens = 0
+        self.output_tokens = 0
 
     def __call__(self, user_message:str=None, keep_chat_history:bool = True, files:list = None):
         if not keep_chat_history:
@@ -75,14 +77,17 @@ class Agent:
         for i in files:
             file_base_name = os.path.basename(i)
             file_extension = os.path.splitext(file_base_name)[1]
-            file_name = os.path.splitext(file_base_name)[0]
             logging.info(f"Uploading file: {os.path.basename(file_base_name)}")
             file_path = i
-            if file_extension in native_extentions_supported:
+            currently_uploaded_files = [file.display_name for file in self.client.files.list()]
+            if file_base_name in currently_uploaded_files:
+                logging.info(f"File {file_base_name} already uploaded. Skipping upload.")
+                continue
+            elif file_extension in native_extentions_supported:
                 file = self.client.files.upload(
                     file=i, 
                     config={
-                            "display_name":file_name}
+                            "display_name":file_base_name}
                  )
             elif other_files_mime_types.get(file_extension):
                 with open(file_path, "rb") as file:
@@ -92,7 +97,7 @@ class Agent:
                         file=io_object_tmdl, 
                         config={
                                 "mime_type":other_files_mime_types.get(file_extension),
-                                "display_name":file_name}
+                                "display_name":file_base_name}
                     )
             else:
                 raise ValueError(f"Unsupported file type: {file_extension}.")
@@ -143,6 +148,12 @@ class Agent:
         contents=self.messages,
         config=self.config
     )
+        output_tokens = response.model_dump()['usage_metadata']['candidates_token_count']
+        input_tokens = response.model_dump()['usage_metadata']['prompt_token_count']
+        self.input_tokens += input_tokens
+        self.output_tokens += output_tokens
+        logging.info(f"Input tokens: {input_tokens}")
+        logging.info(f"Output tokens: {output_tokens}")
         return response
 
     
@@ -228,84 +239,42 @@ class Agent:
 
 
 
-def addition(no_1:float, no_2:float):
-    """
-    Add two numbers together.
+# def addition(no_1:float, no_2:float):
+#     """
+#     Add two numbers together.
 
-    Args:
-        no_1 (float): The first number to add.
-        no_2 (float): The second number to add.
+#     Args:
+#         no_1 (float): The first number to add.
+#         no_2 (float): The second number to add.
 
-    Returns:
-        float: The sum of no_1 and no_2.
-    """
-    return no_1+no_2
-def multiplication(no:float, no2:float):
-    """
-    Multiply two numbers and return the result.
-
-    Args:
-        no (float): First number to multiply.
-        no2 (float): Second number to multiply.
-
-    Returns:
-        float: The product of no and no2.
-    """
-    return no*no2
-
-def division(no:float, no2:float):
-    """
-    Divide two numbers and return the result.
-
-    Args:
-        no (float): The dividend.
-        no2 (float): The divisor.
-
-    Returns:
-        float: The quotient of no and no2.
-    """
-    if no2 == 0:
-        raise ValueError("Cannot divide by zero.")
-    return no / no2
+#     Returns:
+#         float: The sum of no_1 and no_2.
+#     """
+#     return no_1+no_2
 
 
-def get_current_weather(longitude:float, latitude:float):
-    """
-    Get the current weather for a given location.
-
-    Args:
-        longitude (float): The longitude of the location.
-        latitude (float): The latitude of the location.
-
-    Returns:
-        dict: A dictionary containing the current weather information.
-    """
-    url = f"https://api.open-meteo.com/v1/forecast?latitude={latitude}&longitude={longitude}&current_weather=true"
-    response = requests.get(url)
-    return response.json()
-
-
-
-# %%
-system_instruction = """
-you are a helpful assistant that helps users to summarize documents
-    """
-chat = Agent(
-    api_key=google_api_key,
-    model_name="gemini-2.0-flash",
-    system_instruction=system_instruction,
-    tools=[addition, multiplication, get_current_weather, division],
-    temperature=0.2,
-)
+# #%%
+# system_instruction = """
+# You are a calculator that can add 2 numbers together.
+# You do claculation by using tools.
+#     """
+# chat = Agent(
+#     api_key=google_api_key,
+#     model_name="gemini-2.0-flash",
+#     system_instruction=system_instruction,
+#     tools=[addition, ],
+#     temperature=0.2,
+# )
 # %%
 
-#get relative path of the file C:\Users\micha\Documents\Agents\travel_agent\test_data\Measure table.tmdl when current dir is 'c:\\Users\\micha\\Documents\\Agents\\travel_agent\\src\\agents'
-files = [r'..\..\test_data\tables\Measure table.tmdl']
-chat(
-    user_message="Can you give me a brief summary of the file Measure table",
-    keep_chat_history=False,
-    files=files
-)
-# %%
+# #get relative path of the file C:\Users\micha\Documents\Agents\travel_agent\test_data\Measure table.tmdl when current dir is 'c:\\Users\\micha\\Documents\\Agents\\travel_agent\\src\\agents'
+# files = []
+# for file in os.listdir(r"..\..\test_data\tables"):
+#     if os.path.isfile(os.path.join(r"..\..\test_data\tables", file)):
+#         files.append(os.path.join(r"..\..\test_data\tables", file))
+#         print(os.path.join(r"..\..\test_data\tables", file))
+# chat(
+#     user_message="Can you brief me about this semantic model?", 
+#     files=files, 
+#     keep_chat_history=True)
 
-# %%

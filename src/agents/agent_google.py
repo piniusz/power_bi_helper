@@ -10,19 +10,22 @@ import json
 import logging
 import requests
 from io import BytesIO
+from pydantic import BaseModel
 
 load_dotenv(find_dotenv()) # Use the found path explicitly if needed
 google_api_key = os.getenv('GOOGLE_API_KEY')
 logging.basicConfig(level=logging.INFO)
 
 #%%
+
 class Agent:
     def __init__(self, 
                  api_key:str,
                  model_name:str="gemini-2.0-flash", 
                  tools:list=[], 
                  system_instruction:str="",
-                 temperature:int=1
+                 temperature:int=1,
+
     ):
         
         self.model_name = model_name
@@ -34,17 +37,18 @@ class Agent:
         self.messages:list = []
         self.avaible_functions = {f.__name__:f for f in tools}
         self.last_assistant_message = None
-        self._clean_files()
         self.input_tokens = 0
         self.output_tokens = 0
 
-    def __call__(self, user_message:str=None, keep_chat_history:bool = True, files:list = None):
+    def __call__(self, user_message:str=None, keep_chat_history:bool = True, files:list = None, update_config:dict = None):
+        init_config = self.config.copy()
+        if update_config:
+            self._update_config_dynamic(update_config)
+
         if not keep_chat_history:
             initial_messages = self.messages.copy()
-        if files:
-            self._upload_files(files)
         logging.info(f"User message: {user_message}")
-        response = self._send_message(user_message=user_message)
+        response = self._send_message(user_message=user_message, files = files)
         if response.text:
             self.last_assistant_message = response.text
             content = types.Content(
@@ -60,12 +64,24 @@ class Agent:
             self.__call__()
         if not keep_chat_history:
             self.messages = initial_messages.copy()
-
+            self._clean_files(files)
+        self.config = init_config
+        return response
+    
     def print_last_assistant_message(self):
         if self.last_assistant_message:
             print(f"{self.last_assistant_message}")
         else:
             print("No assistant message available.")
+
+    def _update_config_dynamic(self,update_dict:dict):
+
+        for key, value in update_dict.items():
+            if hasattr(self.config, key):
+                setattr(self.config, key, value)
+            else:
+                logging.warning(f"Key '{key}' not found in config.")
+        print(f"For this response, the config was updated to: {self.config}")
 
     def _upload_files(self, files:list):
         logging.info("Uploading files")
@@ -74,15 +90,16 @@ class Agent:
         other_files_mime_types = {
             ".tmdl":"text/plain"
         }
+        currently_uploaded_files = {file.display_name:file for file in self.client.files.list()}
         for i in files:
             file_base_name = os.path.basename(i)
             file_extension = os.path.splitext(file_base_name)[1]
             logging.info(f"Uploading file: {os.path.basename(file_base_name)}")
             file_path = i
-            currently_uploaded_files = [file.display_name for file in self.client.files.list()]
-            if file_base_name in currently_uploaded_files:
+        
+            if file_base_name in currently_uploaded_files.keys():
                 logging.info(f"File {file_base_name} already uploaded. Skipping upload.")
-                continue
+                file = currently_uploaded_files[file_base_name]
             elif file_extension in native_extentions_supported:
                 file = self.client.files.upload(
                     file=i, 
@@ -111,8 +128,9 @@ class Agent:
             role="user",
             parts=file_parts,
         )
-        self.messages.append(content)
+        
         logging.info(f"Files uploaded: {[file.name for file in self.client.files.list()]}")
+        return content
 
     def _clean_files(self,files_names:list[str]=None):
         logging.info("Cleaning files")
@@ -129,12 +147,17 @@ class Agent:
                             tools = self.tools,
                             response_mime_type="text/plain",
                             system_instruction=[
-                            types.Part.from_text(text=self.system_instruction),
+                            types.Part.from_text(text=self.system_instruction)
         ],
     )
         return agent_config
 
-    def _send_message(self, user_message:str=None):
+    def _send_message(self, user_message:str=None, files:list = None):
+        messages = self.messages.copy()
+        if files:
+            files = self._upload_files(files)
+            messages.append(files)
+
         if user_message is not None:
             message = types.Content(
                 role="user",
@@ -142,12 +165,13 @@ class Agent:
                     types.Part.from_text(text=user_message),
                 ]
             )
-            self.messages.append(message)
+            messages.append(message)
         response = self.client.models.generate_content(
         model="gemini-2.0-flash",
-        contents=self.messages,
+        contents=messages,
         config=self.config
     )
+        self.messages.append(response)
         output_tokens = response.model_dump()['usage_metadata']['candidates_token_count']
         input_tokens = response.model_dump()['usage_metadata']['prompt_token_count']
         self.input_tokens += input_tokens

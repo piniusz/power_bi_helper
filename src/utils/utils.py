@@ -1,8 +1,7 @@
 import re
+import os
 
-#%%
-
-def update_measures_descriptions(file_content:str, mapping:dict)->str:
+def update_measures_descriptions(file_content: str, mapping: dict) -> str:
     """
     Update measure descriptions in the provided file content based on the mapping dictionary.
 
@@ -13,23 +12,41 @@ def update_measures_descriptions(file_content:str, mapping:dict)->str:
     Returns:
         str: Updated file content with new measure descriptions.
     """
-    file_content_updated = file_content
+    updated_content = file_content
 
-    # Update measure descriptions
-
+    # Update measure descriptions based on the provided mapping
     for measure_name, measure_description in mapping.items():
-        # Capture measures with description
-        pattern = rf"(?<=\t///)(.*?)([\S]*?)(?=\n\tmeasure '{re.escape(measure_name)}')"
-        occurrence = re.findall(pattern, file_content_updated)
-        file_content_updated = re.sub(pattern, f' {measure_description}', file_content_updated)
+        # Find and replace existing measure descriptions
+        existing_desc_pattern = rf"(?<=\t///)(.*?)([\S]*?)(?=\n\tmeasure '{re.escape(measure_name)}')"
+        updated_content = re.sub(existing_desc_pattern, f' {measure_description}', updated_content)
 
-        # Capture measures without description
-        pattern = rf"(?<=[\n\t]\n\t)(measure '?{re.escape(measure_name)}'? =)"
-        occurrence = re.findall(pattern, file_content_updated)
-        if len(occurrence) == 1:
-            replacement = f"/// {measure_description}\n\t{occurrence[0]}"
-            file_content_updated = re.sub(pattern, replacement, file_content_updated)
-    #removing empty tabs
-    pattern = r"\t+(?=\n)"
-    file_content_updated = re.sub(pattern, "", file_content_updated)
-    return file_content_updated
+        # Find measures without descriptions and add new descriptions
+        no_desc_pattern = rf"(?<=[\n\t]\n\t)(measure '?{re.escape(measure_name)}'? =)"
+        no_desc_matches = re.findall(no_desc_pattern, updated_content)
+        if len(no_desc_matches) == 1:
+            replacement = f"/// {measure_description}\n\t{no_desc_matches[0]}"
+            updated_content = re.sub(no_desc_pattern, replacement, updated_content)
+    
+    # Remove empty tabs at the end of lines
+    empty_tabs_pattern = r"\t+(?=\n)"
+    updated_content = re.sub(empty_tabs_pattern, "", updated_content)
+    
+    return updated_content
+
+def list_files_in_directory(directory: str, extension: str = None, recursive: bool = False) -> list:
+    """
+    List all files in a directory with a specific extension.
+
+    Args:
+        directory (str): The directory to search in.
+        extension (str, optional): The file extension to filter by. If None, all files are listed.
+        recursive (bool, optional): Whether to search recursively in subdirectories.
+
+    Returns:
+        list: A list of file paths matching the criteria.
+    """
+    if recursive:
+        return [os.path.join(root, file) for root, _, files in os.walk(directory) for file in files if not extension or file.endswith(extension)]
+    else:
+        return [os.path.join(directory, file) for file in os.listdir(directory) if (not extension or file.endswith(extension)) and os.path.isfile(os.path.join(directory, file))]
+    

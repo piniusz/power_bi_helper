@@ -1,6 +1,6 @@
-import os
 import pytest
 from src.utils import utils
+import os
 
 def test_update_measures_descriptions_with_actual_files(test_case_paths):
     
@@ -25,4 +25,22 @@ def test_update_measures_descriptions_with_actual_files(test_case_paths):
     # Assert that the updated content matches the expected content
     assert updated_content == expected_content #
 
+def test_list_files_in_directory(test_directory):
+    """Test the list_files_in_directory function with a temporary directory."""
+    # Test listing files in the main directory
+    files = utils.list_files_in_directory(test_directory, extension=".txt")
+    assert len(files) == 2  # 2 in main dir
+    assert all(file.endswith(".txt") for file in files)
 
+    # Test listing files recursively
+    recursive_files = utils.list_files_in_directory(test_directory, extension=".txt", recursive=True)
+    assert len(recursive_files) == 3  # 2 in main dir + 1 in subdir
+    assert all(file.endswith(".txt") for file in recursive_files)
+
+    # Test listing all files without extension filter
+    all_files = utils.list_files_in_directory(test_directory)
+    assert len(all_files) == 3  # All files in main directory
+
+    # Test listing files with a different extension
+    csv_files = utils.list_files_in_directory(test_directory, extension=".csv", recursive=True)
+    assert len(csv_files) == 2  # Only the .csv files

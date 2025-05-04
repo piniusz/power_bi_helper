@@ -1,6 +1,8 @@
 import sys
 import os
 import pytest
+import tempfile
+import shutil
 
 # Add the project root directory to sys.path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
@@ -13,3 +15,36 @@ def test_case_paths():
         'init_file': os.path.join(test_case_dir, 'Measure table initial.tmdl'),
         'goal_file': os.path.join(test_case_dir, 'Measure table goal.tmdl')
     }
+
+@pytest.fixture
+def test_directory():
+    """Create a temporary directory with test files."""
+    temp_dir = tempfile.mkdtemp()
+    
+    # Create files in the main directory
+    with open(os.path.join(temp_dir, "file1.txt"), "w") as f:
+        f.write("content")
+    with open(os.path.join(temp_dir, "file2.txt"), "w") as f:
+        f.write("content")
+    with open(os.path.join(temp_dir, "file3.csv"), "w") as f:
+        f.write("content")
+    
+    # Create a subdirectory with files
+    subdir = os.path.join(temp_dir, "subdir")
+    os.makedirs(subdir)
+    with open(os.path.join(subdir, "file4.txt"), "w") as f:
+        f.write("content")
+    with open(os.path.join(subdir, "file5.csv"), "w") as f:
+        f.write("content")
+    
+    yield temp_dir
+    
+    # Clean up
+    shutil.rmtree(temp_dir)
+
+@pytest.fixture
+def mock_agent_class(mocker):
+    """Fixture to mock the Agent class."""
+    mock_agent = mocker.patch('src.agents.agent.Agent')
+    return mock_agent
+        

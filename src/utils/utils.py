@@ -13,7 +13,7 @@ def update_measures_descriptions(file_content: str, mapping: dict) -> str:
         str: Updated file content with new measure descriptions.
     """
     updated_content = file_content
-
+    
     # Update measure descriptions based on the provided mapping
     for measure_name, measure_description in mapping.items():
         # Find and replace existing measure descriptions

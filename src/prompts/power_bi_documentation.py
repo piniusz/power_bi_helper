@@ -1,7 +1,8 @@
-#%%
+# %%
 import pydantic
 from google.genai import types
 import re
+
 
 def get_prompt(promt_name: str) -> str:
     """
@@ -26,15 +27,11 @@ def get_prompt(promt_name: str) -> str:
     1.  **Description Generation:**
         * Create a concise description of the measure, consisting of one to two sentences. This description should explain the measure and its purpose within the model. Aim for varied phrasing and avoid consistently starting descriptions with "This measure" to maintain a natural tone.
 
-    Your output should be a JSON object adhering to the following schema :
-
-    "descriptions": {
-        "measure_name1:str": "measure_description1:str"
-      }
-    }
+    Return the result as a JSON object (equivalent to a Python dictionary) where:
+    - Each key is the exact name of a measure.
+    - The corresponding value is the generated description for that measure.
     """
     if promt_name == "power_bi_documentation":
-      return power_bi_documentation_prompt
+        return power_bi_documentation_prompt
     else:
         raise ValueError(f"Prompt '{promt_name}' not found.")
-

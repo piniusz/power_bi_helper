@@ -6,26 +6,25 @@ from pydantic_ai import BinaryContent
 from typing import List
 from pathlib import Path
 import os
+import nest_asyncio
+from src.utils.utils import list_files_in_directory
 
 
 model = GeminiModel("gemini-2.0-flash", provider="google-gla")
 
 instructions = """
-    You are a Power BI documentation generator. Your goal is to helps user with achieveing perect Power BI model and documentation.
+Your role is the Power BI Documentation Generator. You help users build excellent Power BI models and produce comprehensive documentation.
 
-    Depending on user request you can do several tasks:
-    
-    1.Answerw questions about a model
-    2. Create measure descriptions:
+Always start by using the `get_model_context` tool to understand the model related to the user's question.
 
-    For each measure identified in the model, you will perform the following actions:
+You are equipped to handle these tasks:
 
-        1.  **Description Generation:**
-            * Create a concise description of the measure, consisting of one to two sentences. This description should explain the measure and its purpose within the model. Aim for varied phrasing and avoid consistently starting descriptions with "This measure" to maintain a natural tone.
+1.  **Answer Questions:** Provide information and answers about the user's Power BI model.
+2.  **Write Measure Descriptions:** For every measure in the model, you will:
+    * Write a short description (one or two sentences) that clearly explains the measure and its role. Vary your language and avoid starting every description the same way.
 
-        Return the result as a JSON object (equivalent to a Python dictionary) where:
-        - Each key is the exact name of a measure.
-        - The corresponding value is the generated description for that measure.
+Deliver the measure descriptions as a JSON object. The measure name should be the key, and its description should be the value.
+
 """
 
 
@@ -35,14 +34,23 @@ class Deps:
     business_ctx_files = List[str | BinaryContent] | None
 
 
-power_bi_agent = Agent(model=model, system_prompt=instructions, deps_type=Deps)
+power_bi_agent = Agent(
+    model=model,
+    system_prompt=instructions,
+    deps_type=Deps,
+    temperature=0,
+    instrument=True,
+)
 
 
 @power_bi_agent.tool
 async def get_model_context(ctx: RunContext[Deps]) -> list[BinaryContent]:
+    """
+    Get the model context from the provided files.
+    """
     model_ctx = []
     mime_type_lookup = {"tmdl": "text/plain"}
-    for file in ctx.model:
+    for file in ctx.deps.model_files:
         if type(file) == BinaryContent:
             model_ctx.append(file)
         else:
@@ -50,7 +58,7 @@ async def get_model_context(ctx: RunContext[Deps]) -> list[BinaryContent]:
             mime_type = mime_type_lookup.get(file_extension)
             if mime_type is None:
                 raise TypeError(f"{file_extension} extentsion is not supported")
-        file_path = Path(file_path)
+        file_path = Path(file)
         binary_content = file_path.read_bytes()
         binary_content = BinaryContent(binary_content, mime_type)
         model_ctx.append(binary_content)
@@ -58,4 +66,9 @@ async def get_model_context(ctx: RunContext[Deps]) -> list[BinaryContent]:
 
 
 if __name__ == "__main__":
-    gemini = Agent(model=model)
+    nest_asyncio.apply()
+    gemini = Agent(model=model, temperature=0)
+    models_files_path = r"C:\Users\micha\Documents\power bi challenge 21\Power BI Challenge 21 - “Enterprise DNA YouTube Channel Data Analysis”.SemanticModel"
+    models_files = list_files_in_directory(models_files_path, ".tmdl", recursive=True)
+    deps = Deps(models_files)
+    results = power_bi_agent.run_sync("Measure descriptions", deps=deps)

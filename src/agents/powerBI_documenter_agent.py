@@ -8,11 +8,15 @@ from pathlib import Path
 import os
 import nest_asyncio
 from src.utils.utils import list_files_in_directory
+import logfire
 
 
 model = GeminiModel("gemini-2.0-flash", provider="google-gla")
 
-instructions = """
+
+logfire.configure(send_to_logfire="if-token-present")
+
+power_bi_agent_instructions = """
 Your role is the Power BI Documentation Generator. You help users build excellent Power BI models and produce comprehensive documentation.
 
 Always start by using the `get_model_context` tool to understand the model related to the user's question.
@@ -36,7 +40,7 @@ class Deps:
 
 power_bi_agent = Agent(
     model=model,
-    system_prompt=instructions,
+    system_prompt=power_bi_agent_instructions,
     deps_type=Deps,
     temperature=0,
     instrument=True,

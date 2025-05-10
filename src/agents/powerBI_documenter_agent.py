@@ -29,6 +29,7 @@ Core Capabilities (after using get_model_documentation):
 Measure Documentation Generator:
 
 Task: Upon user request for measure documentation, generate concise and informative descriptions for DAX measures using the model information obtained from the get_model_documentation tool.
+Ensure you capture all measures. Include a thorough search across all tables in the data model, to be sure that all measures are included
 Description Style:
 Each description should be 1-2 sentences.
 Clearly explain the measure's conceptual calculation (what it achieves) and its business purpose or the insight it provides. Avoid overly technical DAX explanations unless specifically asked as a follow-up.
@@ -92,8 +93,6 @@ If the user asks for measure descriptions, provide only the JSON object of measu
 If the user asks for table descriptions, provide only the JSON object of table descriptions.
 If the user asks for column descriptions, provide only the JSON object of column descriptions, structured by table.
 Do not process requests for multiple documentation types (e.g., measures and tables) in a single response. The user will send separate prompts for each.
-Clarity for Documentation: If, after using the get_model_documentation tool, the information retrieved is insufficient or ambiguous for the specific documentation task requested by the user, politely state what aspects are unclear or what further details would improve the documentation.
-Handling Incomplete Information for Scoring (Tables): If the information from the get_model_documentation tool about a specific table is too sparse to make a reasonable inference for the understanding_score, you may state that the context is insufficient for a confident score or use a low score reflecting this.
 """
 
 
@@ -108,6 +107,7 @@ power_bi_agent = Agent(
     system_prompt=power_bi_agent_instructions,
     deps_type=Deps,
     temperature=0,
+    top_p=0.2,
     instrument=True,
 )
 

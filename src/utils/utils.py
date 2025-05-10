@@ -4,40 +4,84 @@ from pathlib import Path
 from pydantic_ai import BinaryContent
 
 
-def update_measures_descriptions(file_content: str, mapping: dict) -> str:
+def update_measures_columns_descriptions(
+    file_content: str, mapping: dict, object_to_map: str
+) -> str:
     """
-    Update measure descriptions in the provided file content based on the mapping dictionary.
+    Updates or adds descriptions for measures or columns in a Power BI model file.
+
+    This function processes the content of a Power BI model file and updates existing
+    descriptions or adds new descriptions for measures or columns based on the provided mapping.
 
     Args:
-        file_content (str): Content of the file to update.
-        mapping (dict): Dictionary containing measure names as keys and descriptions as values.
+        file_content (str): The content of the Power BI model file.
+        mapping (dict): A dictionary mapping object names to their descriptions.
+                        Format: {object_name: object_description}
+        object_to_map (str): The type of object to update descriptions for.
+                            Must be either 'measure' or 'column'.
 
     Returns:
-        str: Updated file content with new measure descriptions.
-    """
-    updated_content = file_content
+        str: The updated content of the Power BI model file with updated descriptions.
 
+    Raises:
+        Exception: If object_to_map is not 'measure' or 'column'.
+
+    Example:
+        >>> mapping = {"Sales": "Total sales amount", "Profit": "Net profit"}
+        >>> updated_content = update_measures_columns_descriptions(file_content, mapping, "measure")
+    """
+
+    updated_content = file_content
+    if object_to_map not in ["measure", "column"]:
+        raise Exception("object_to_map must be either 'measure' or 'column'")
     # Update measure descriptions based on the provided mapping
-    for measure_name, measure_description in mapping.items():
+    for object_name, object_description in mapping.items():
         # Find and replace existing measure descriptions
-        existing_desc_pattern = (
-            rf"(?<=\t///)(.*?)([\S]*?)(?=\n\tmeasure '{re.escape(measure_name)}')"
-        )
+
+        existing_desc_pattern = rf"(?<=\t///)(.*?)([\S]*?)(?=\n\t{object_to_map} '{re.escape(object_name)}')"
         updated_content = re.sub(
-            existing_desc_pattern, f" {measure_description}", updated_content
+            existing_desc_pattern, f" {object_description}", updated_content
         )
 
         # Find measures without descriptions and add new descriptions
-        no_desc_pattern = rf"(?<=[\n\t]\n\t)(measure '?{re.escape(measure_name)}'? =)"
+        no_desc_pattern = (
+            rf"(?<=[\n\t]\n\t)({object_to_map} '?{re.escape(object_name)}'?)"
+        )
         no_desc_matches = re.findall(no_desc_pattern, updated_content)
         if len(no_desc_matches) == 1:
-            replacement = f"/// {measure_description}\n\t{no_desc_matches[0]}"
+            replacement = f"/// {object_description}\n\t{no_desc_matches[0]}"
             updated_content = re.sub(no_desc_pattern, replacement, updated_content)
 
     # Remove empty tabs at the end of lines
     empty_tabs_pattern = r"\t+(?=\n)"
     updated_content = re.sub(empty_tabs_pattern, "", updated_content)
 
+    return updated_content
+
+
+def update_table_description(file_content: str, description: str) -> str:
+    """
+    Updates or adds a description for a table in a Power BI model file.
+
+    This function processes the content of a Power BI model file and updates
+    an existing table description or adds a new description if none exists.
+
+    Args:
+        file_content (str): The content of the Power BI model file.
+        description (str): The description to add or update for the table.
+
+    Returns:
+        str: The updated content of the Power BI model file with the updated table description.
+
+    Example:
+        >>> updated_content = update_table_description(file_content, "Customer information table")
+    """
+    existing_desc_pattern = r"(?<=///)(.*?)([\S]*?)(?=\ntable)"
+    search = re.search(existing_desc_pattern, file_content)
+    if search is not None:
+        updated_content = re.sub(existing_desc_pattern, description, file_content)
+    else:
+        updated_content = f"/// {description}\n" + file_content
     return updated_content
 
 

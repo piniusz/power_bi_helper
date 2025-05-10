@@ -1,0 +1,10 @@
+table Videos
+
+	/// New description
+	column 'Video ID'
+
+	/// New description
+	column Duration
+
+	/// New description
+	column 'Video name'

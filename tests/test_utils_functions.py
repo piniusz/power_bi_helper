@@ -3,15 +3,14 @@ from src.utils import utils
 import os
 from pydantic_ai import BinaryContent
 from pathlib import Path
-from mock import patch, mock_open
 
 
 def test_update_measures_descriptions_with_actual_files(test_case_paths):
 
     # Read the expected goal content
-    with open(test_case_paths["goal_file"], "r", encoding="utf-8") as file:
+    with open(test_case_paths["measures_goal"], "r", encoding="utf-8") as file:
         expected_content = file.read()
-    with open(test_case_paths["init_file"], "r", encoding="utf-8") as file:
+    with open(test_case_paths["measures_init"], "r", encoding="utf-8") as file:
         file_content_raw = file.read()
 
     # Define the mapping
@@ -24,10 +23,37 @@ def test_update_measures_descriptions_with_actual_files(test_case_paths):
 
     # Act
 
-    updated_content = utils.update_measures_descriptions(file_content_raw, mapping)
+    updated_content = utils.update_measures_columns_descriptions(
+        file_content_raw, mapping, "measure"
+    )
 
     # Assert that the updated content matches the expected content
     assert updated_content == expected_content  #
+
+
+def test_update_columns_descriptions_with_actual_files(test_case_paths):
+
+    # Read the expected goal content
+    with open(test_case_paths["columns_goal"], "r", encoding="utf-8") as file:
+        expected_content = file.read()
+    with open(test_case_paths["columns_init"], "r", encoding="utf-8") as file:
+        file_content_raw = file.read()
+
+    # Define the mapping
+    mapping = {
+        r"Video ID": r"New description",
+        r"Duration": r"New description",
+        r"Video name": r"New description",
+    }
+
+    # Act
+
+    updated_content = utils.update_measures_columns_descriptions(
+        file_content_raw, mapping, "column"
+    )
+
+    # Assert that the updated content matches the expected content
+    assert updated_content == expected_content
 
 
 def test_list_files_in_directory(test_directory):

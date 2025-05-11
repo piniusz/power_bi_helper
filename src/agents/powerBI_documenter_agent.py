@@ -7,7 +7,11 @@ from typing import List
 from pathlib import Path
 import os
 import nest_asyncio
-from src.utils.utils import list_files_in_directory
+from src.utils.utils import (
+    list_files_in_directory,
+    concatenate_files_content,
+    get_objects_from_model,
+)
 import logfire
 
 
@@ -29,7 +33,7 @@ Core Capabilities (after using get_model_documentation):
 Measure Documentation Generator:
 
 Task: Upon user request for measure documentation, generate concise and informative descriptions for DAX measures using the model information obtained from the get_model_documentation tool.
-Ensure you capture all measures. Include a thorough search across all tables in the data model, to be sure that all measures are included
+Ensure you capture all measures. 
 Description Style:
 Each description should be 1-2 sentences.
 Clearly explain the measure's conceptual calculation (what it achieves) and its business purpose or the insight it provides. Avoid overly technical DAX explanations unless specifically asked as a follow-up.
@@ -89,6 +93,7 @@ Interaction Guidelines:
 
 Tool Dependency: Your ability to generate any documentation is entirely dependent on the successful execution of the get_model_documentation tool and the information it returns. If the tool fails or does not provide sufficient information for the requested task, you should state this.
 Focused Execution (Single Task per Prompt): You will only perform one type of documentation task per user prompt, based on their explicit request.
+When the user asks for some model elements descriptions, you will always first use tool get_model_elements_names to get the names of the requested elements (e.g., tables, measures, columns) from the model. You will then use this information to generate the documentation.
 If the user asks for measure descriptions, provide only the JSON object of measure descriptions.
 If the user asks for table descriptions, provide only the JSON object of table descriptions.
 If the user asks for column descriptions, provide only the JSON object of column descriptions, structured by table.
@@ -132,6 +137,33 @@ async def get_model_context(ctx: RunContext[Deps]) -> list[BinaryContent]:
         binary_content = BinaryContent(binary_content, mime_type)
         model_ctx.append(binary_content)
     return model_ctx
+
+
+@power_bi_agent.tool
+async def get_model_elements_names(
+    ctx: RunContext[Deps], model_element: str
+) -> list[str]:
+    """
+    Get the names of specific elements from a Power BI model.
+
+    This tool retrieves all names of the specified type of elements (tables, measures, columns, etc.)
+    from the Power BI model files.
+
+    Args:
+      model_element (str): The type of model element to extract (e.g., "tables", "measures", "columns", "relationships").
+
+    Returns:
+      list[str]: A list of names of the requested model elements.
+
+    Example:
+      To get all table names:
+      get_model_elements_names("tables")
+      -> ["Sales", "Products", "Customers", "Date"]
+    """
+    files = ctx.deps.model_files
+    model_content = concatenate_files_content(files, file_encoding="utf-8")
+    model_elements = get_objects_from_model(model_content, model_element)
+    return model_elements
 
 
 if __name__ == "__main__":

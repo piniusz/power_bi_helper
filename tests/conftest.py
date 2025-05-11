@@ -21,6 +21,9 @@ def test_case_paths():
         ),
         "columns_init": os.path.join(test_case_dir, "column descriptions", "Init.tmdl"),
         "columns_goal": os.path.join(test_case_dir, "column descriptions", "Goal.tmdl"),
+        "object_finder_fixture": os.path.join(
+            test_case_dir, "object_finder_fixture.tmdl"
+        ),
     }
 
 

@@ -79,3 +79,22 @@ def test_list_files_in_directory(test_directory):
         test_directory, extension=".csv", recursive=True
     )
     assert len(csv_files) == 2  # Only the .csv files
+
+
+def test_tmdl_object_finder(test_case_paths):
+    # Arrange
+    with open(test_case_paths["object_finder_fixture"], "r", encoding="utf-8") as file:
+        sample_table = file.read()
+
+    expected_measures = ["KPI01", "KPI 02", "new's measure"]
+    expected_columns = ["KPI's name", "Category", "Category name"]
+    expected_tables = ["KPI", "New table", "I'am table"]
+
+    found_columns = utils.get_objects_from_model(sample_table, "column")
+    found_measures = utils.get_objects_from_model(sample_table, "measure")
+    found_tables = utils.get_objects_from_model(sample_table, "table")
+
+    # Assert
+    assert found_measures == expected_measures
+    assert found_columns == expected_columns
+    assert found_tables == expected_tables

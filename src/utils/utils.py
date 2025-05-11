@@ -127,3 +127,58 @@ def load_file_to_binary(file_list: list[str]):
         else:
             raise TypeError(f"{file_extension} is unsupported datatype")
     return files_binary
+
+
+def get_objects_from_model(model_ct: str, model_element: str) -> list:
+    """
+    Extracts object names of specified type from a Power BI tabular model content string.
+
+    This function uses regular expressions to find and extract names of objects
+    from a Power BI tabular model definition string based on the specified model element.
+
+    Parameters
+    ----------
+    model_ct : str
+        A string containing the Power BI tabular model content/definition.
+    model_element : str
+        The type of model element to extract. Must be one of: 'measure', 'column', or 'table'.
+
+    Returns
+    -------
+    list
+        A list of strings containing the names of the extracted objects.
+        Names are normalized to handle escaped single quotes.
+
+    Raises
+    ------
+    Exception
+        If model_element is not one of the supported types ('measure', 'column', 'table').
+    """
+    if model_element == "measure" or model_element == "measures":
+        pattern = r"(?<=\n\tmeasure )(?:'((?:[^']|'')*)'|([^\s'=]+))(?= \=)"
+    elif model_element == "column" or model_element == "columns":
+        pattern = r"(?<=\n\tcolumn )(?:'((?:[^']|'')*)'|([^\s'=]+))(?=\n)"
+    elif model_element == "table" or model_element == "tables":
+        pattern = r"(?<=table )(?:'((?:[^']|'')*)'|([^\s'=]+))(?=\n)"
+    else:
+        raise Exception("Unknown model element")
+    matches = re.findall(pattern, model_ct)
+    objects = [match[0] if match[0] else match[1] for match in matches]
+    objects = [obj.replace("''", "'") for obj in objects]
+    return objects
+
+
+def concatenate_files_content(files_path: list, file_encoding: str = None) -> str:
+    files_content = []
+    for file in files_path:
+        with open(file, "r", encoding=file_encoding) as f:
+            files_content.append(f.read())
+    files_content_str = "\n".join(files_content)
+    return files_content_str
+
+
+if __name__ == "__main__":
+    path = r"C:\Users\micha\Documents\PBI files\competetive marketing analysis\Competitive Marketing Analysis.SemanticModel"
+    files = list_files_in_directory(path, "tmdl", recursive=True)
+    content = concatenate_files_content(files)
+    measures_list = get_objects_from_model(content, "measure")

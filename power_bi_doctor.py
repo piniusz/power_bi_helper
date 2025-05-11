@@ -39,9 +39,11 @@ if __name__ == "__main__":
         nest_asyncio.apply()
 
     logging.info("Getting mode files from the directory")
-    files_path = r"C:\Users\micha\Documents\power bi challenge 21\Power BI Challenge 21 - “Enterprise DNA YouTube Channel Data Analysis”.SemanticModel"
+    files_path = r"C:\Users\micha\Documents\PBI files\competetive marketing analysis\Competitive Marketing Analysis.SemanticModel"
     logging.info("Getting model documentation from LLM")
     requests = ["measure descriptions", "table descriptions", "column descriptions"]
+    requests = ["measure descriptions"]
+
     final_output = {}
     for request in requests:
         llm_output, model_files = asyncio.run(

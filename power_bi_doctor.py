@@ -4,7 +4,7 @@ import logging
 import shutil
 import json
 from tkinter import filedialog
-import src.agents.powerBI_documenter_agent as pbi_doc_agent
+from src.agents.powerBI_documenter_agent import call_agent, Deps
 from src.utils.utils import (
     list_files_in_directory,
     update_measures_columns_descriptions,
@@ -12,7 +12,8 @@ from src.utils.utils import (
 )
 import asyncio
 import nest_asyncio
-from pydantic_ai.models.gemini import GeminiModel
+from pydantic_ai.models.gemini import GeminiModel, ThinkingConfig
+import re
 
 logging.basicConfig(level=logging.INFO)
 
@@ -20,26 +21,20 @@ logging.basicConfig(level=logging.INFO)
 async def get_model_documentation(
     model_files_path: str,
     analysis_requests: str,
-    message_history: list = None,
     business_ctx_files_path: str = None,
-    model: str = "gemini-2.0-flash",
 ):
     model_files = list_files_in_directory(
         model_files_path, extension=".tmdl", recursive=True
     )
-    deps = pbi_doc_agent.Deps(model_files)
+    deps = Deps(model_files)
     if business_ctx_files_path:
         business_files = model_files = list_files_in_directory(
             business_ctx_files_path, recursive=True
         )
-        deps = pbi_doc_agent.Deps(model_files, business_files)
+        deps = Deps(model_files, business_files)
 
-    if model.startswith("gemini"):
-        model = GeminiModel(model, provider="google-gla")
+    output = call_agent(analysis_requests, deps=deps)
 
-    output = pbi_doc_agent.power_bi_agent.run_sync(
-        analysis_requests, deps=deps, model=model, message_history=message_history
-    )
     return output, model_files
 
 
@@ -55,19 +50,41 @@ if __name__ == "__main__":
     # requests = ["measure descriptions"]
 
     final_output = {}
+    model = "gemini-2.5-flash-preview-04-17"
 
-    for request in requests:
-        llm_output, model_files = asyncio.run(
-            get_model_documentation(files_path, request)
+    async def process_request(request):
+        """Process a single documentation request and parse the result"""
+        logging.info(f"Processing request: {request}")
+        llm_output, model_files = await get_model_documentation(
+            files_path,
+            request,
         )
-        message_history = llm_output.all_messages()
-        llm_output = json.loads(
-            llm_output.output.replace("```json\n", "").replace("```", "")
+
+        pattern = r"```json\s*([\s\S]*?)\s*```"
+        json_match = re.search(pattern, llm_output.output)
+        json_str = json_match.group(1)
+        parsed_output = json.loads(
+            json_str.replace("```json\n", "").replace("```", "").replace(".tmdl", "")
         )
 
-        final_output[request.replace(" ", "_")] = llm_output
+        return request, parsed_output, model_files
 
-    logging.info("Measure descriptions received")
+    async def run_parallel_requests():
+        """Run all requests in parallel and collect results"""
+        tasks = [process_request(request) for request in requests]
+        results = await asyncio.gather(*tasks)
+
+        final_output = {}
+        # Collect results and the model_files
+        for request, output, model_files in results:
+            final_output[request.replace(" ", "_")] = output
+
+        return final_output, model_files
+
+    # Run all requests in parallel
+    final_output, model_files = asyncio.run(run_parallel_requests())
+
+    logging.info("All documentation received")
     files_path_parts = os.path.split(files_path)
 
     updated_folder = files_path_parts[-1] + "_updated"
@@ -89,20 +106,23 @@ if __name__ == "__main__":
             updated_file_content = update_measures_columns_descriptions(
                 updated_file_content, measure_descriptions, "measure"
             )
-        if "table_descriptions" in final_output.keys():
-            table_descriptions = final_output["table_descriptions"]
-            if table_name in table_descriptions.keys():
-                description = table_descriptions[table_name]["table_description"]
-                updated_file_content = update_table_description(
-                    updated_file_content, description
-                )
+        # if "table_descriptions" in final_output.keys():
+        #     table_descriptions = final_output["table_descriptions"]
+        #     if table_name in table_descriptions:
+        #         description = table_descriptions[table_name]["description"]
+        #         confidence = table_descriptions[table_name]["understanding_score"]
+        #         if confidence > 0.8:
+        #             updated_file_content = update_table_description(
+        #                 updated_file_content, description
+        #             )
 
         if "column_descriptions" in final_output.keys():
             column_descriptions = final_output["column_descriptions"]
             if table_name in column_descriptions.keys():
-                columns_descriptions = column_descriptions[table_name]
+                column_descriptions = column_descriptions[table_name]
+
                 updated_file_content = update_measures_columns_descriptions(
-                    updated_file_content, columns_descriptions, "column"
+                    updated_file_content, column_descriptions, "column"
                 )
 
         if updated_file_content != file_content:

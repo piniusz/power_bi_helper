@@ -15,10 +15,10 @@ def test_update_measures_descriptions_with_actual_files(test_case_paths):
 
     # Define the mapping
     mapping = {
-        r"Measure 1": r"New description",
-        r"Measure 2": r"New description",
-        r"Measure_3": r"New description",
-        r"Measure (4)": r"New description",
+        r"Measure 1": {"description": "New description", "understanding_score": 0.9},
+        r"Measure 2": {"description": "New description", "understanding_score": 0.9},
+        r"Measure_3": {"description": "New description", "understanding_score": 0.9},
+        r"Measure (4)": {"description": "New description", "understanding_score": 0.9},
     }
 
     # Act
@@ -41,9 +41,11 @@ def test_update_columns_descriptions_with_actual_files(test_case_paths):
 
     # Define the mapping
     mapping = {
-        r"Video ID": r"New description",
-        r"Duration": r"New description",
-        r"Video name": r"New description",
+        r"Video ID": {"description": "New description", "understanding_score": 0.9},
+        r"Duration": {"description": "New description", "understanding_score": 0.9},
+        r"Video name": {"description": "New description", "understanding_score": 0.9},
+        r"Views total": {"description": "New description", "understanding_score": 0.9},
+        r"Views": {"description": "New description", "understanding_score": 0.9},
     }
 
     # Act
@@ -83,16 +85,20 @@ def test_list_files_in_directory(test_directory):
 
 def test_tmdl_object_finder(test_case_paths):
     # Arrange
-    with open(test_case_paths["object_finder_fixture"], "r", encoding="utf-8") as file:
-        sample_table = file.read()
+    model_files = utils.list_files_in_directory(
+        test_case_paths["model_folder"], extension=".tmdl", recursive=True
+    )
 
-    expected_measures = ["KPI01", "KPI 02", "new's measure"]
-    expected_columns = ["KPI's name", "Category", "Category name"]
-    expected_tables = ["KPI", "New table", "I'am table"]
+    expected_measures = {"KPI.tmdl": ["KPI01", "KPI 02", "new''s measure"]}
+    expected_columns = {
+        "KPI.tmdl": ["KPI''s name", "Category", "Category name"],
+        "Videos.tmdl": ["Video ID", "Duration", "Video name"],
+    }
+    expected_tables = {"KPI.tmdl": ["KPI"], "Videos.tmdl": ["Videos"]}
 
-    found_columns = utils.get_objects_from_model(sample_table, "column")
-    found_measures = utils.get_objects_from_model(sample_table, "measure")
-    found_tables = utils.get_objects_from_model(sample_table, "table")
+    found_columns = utils.get_objects_from_model(model_files, "columns")
+    found_measures = utils.get_objects_from_model(model_files, "measures")
+    found_tables = utils.get_objects_from_model(model_files, "tables")
 
     # Assert
     assert found_measures == expected_measures

@@ -7,4 +7,10 @@ table Videos
 	column Duration
 
 	/// New description
+	column Views = 'some definition'
+
+	/// New description
+	column 'Views total' = 'some definition'
+
+	/// New description
 	column 'Video name'

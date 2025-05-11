@@ -26,7 +26,7 @@ table KPI
 
 		annotation SummarizationSetBy = User
 
-	column Category
+	column Category = 'some definition'
 		dataType: string
 		lineageTag: baeea55e-43dd-41ae-955a-905555d93d6a
 		summarizeBy: none
@@ -54,8 +54,4 @@ table KPI
 	annotation PBI_NavigationStepName = Navigation
 
 	annotation PBI_ResultType = Table
-
-table 'New table'
-
-table 'I''am table'
 

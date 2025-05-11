@@ -1,3 +1,4 @@
+# %%
 import os
 import logging
 import shutil
@@ -11,6 +12,7 @@ from src.utils.utils import (
 )
 import asyncio
 import nest_asyncio
+from pydantic_ai.models.gemini import GeminiModel
 
 logging.basicConfig(level=logging.INFO)
 
@@ -18,7 +20,9 @@ logging.basicConfig(level=logging.INFO)
 async def get_model_documentation(
     model_files_path: str,
     analysis_requests: str,
+    message_history: list = None,
     business_ctx_files_path: str = None,
+    model: str = "gemini-2.0-flash",
 ):
     model_files = list_files_in_directory(
         model_files_path, extension=".tmdl", recursive=True
@@ -30,10 +34,16 @@ async def get_model_documentation(
         )
         deps = pbi_doc_agent.Deps(model_files, business_files)
 
-    output = pbi_doc_agent.power_bi_agent.run_sync(analysis_requests, deps=deps)
+    if model.startswith("gemini"):
+        model = GeminiModel(model, provider="google-gla")
+
+    output = pbi_doc_agent.power_bi_agent.run_sync(
+        analysis_requests, deps=deps, model=model, message_history=message_history
+    )
     return output, model_files
 
 
+# %%
 if __name__ == "__main__":
     if os.environ.get("IS_LOCAL") == "1":
         nest_asyncio.apply()
@@ -42,13 +52,15 @@ if __name__ == "__main__":
     files_path = r"C:\Users\micha\Documents\PBI files\competetive marketing analysis\Competitive Marketing Analysis.SemanticModel"
     logging.info("Getting model documentation from LLM")
     requests = ["measure descriptions", "table descriptions", "column descriptions"]
-    requests = ["measure descriptions"]
+    # requests = ["measure descriptions"]
 
     final_output = {}
+
     for request in requests:
         llm_output, model_files = asyncio.run(
             get_model_documentation(files_path, request)
         )
+        message_history = llm_output.all_messages()
         llm_output = json.loads(
             llm_output.output.replace("```json\n", "").replace("```", "")
         )

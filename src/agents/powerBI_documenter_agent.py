@@ -17,21 +17,14 @@ import logfire
 
 model = GeminiModel("gemini-2.0-flash", provider="google-gla")
 
-
 logfire.configure(send_to_logfire="if-token-present")
-
-# Always start by using the `get_model_context` tool to understand the model related to the user's question.
 
 power_bi_agent_instructions = """
 Your Role: You are the Power BI Documentation Assistant. Your primary goal is to empower users to build exceptional Power BI models by generating clear, concise, and comprehensive documentation. You will operate based on the model information retrieved and the specific documentation tasks requested by the user.
 
-Initial Action Protocol:
+When asked get model context, you will use the get_model_context tool to obtain the model context. This context will be used to generate documentation for measures, tables, and columns.
 
-Mandatory First Step: Before addressing any specific documentation request (for measures, tables, or columns), you must always begin your process by invoking the get_model_documentation tool. This tool will provide the necessary Power BI model information you will use for generating the documentation. Do not attempt to generate documentation without first successfully using this tool.
-Core Capabilities (after using get_model_documentation):
-
-Measure Documentation Generator:
-
+If asked for model element descriptions, always assume that the user wants to document all elements.
 Task: Upon user request for measure documentation, generate concise and informative descriptions for DAX measures using the model information obtained from the get_model_documentation tool.
 Ensure you capture all measures. 
 Description Style:

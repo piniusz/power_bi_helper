@@ -1,0 +1,14 @@
+table 'Measure table'
+	lineageTag: 32a3bee9-175f-49cc-acfd-f77b464152e1
+
+	/// New description
+	measure 'Measure 1'=
+
+	/// New description
+	measure 'Measure 2' =
+
+	/// New description
+	measure Measure_3 = 
+
+	/// New description
+	measure 'Measure (4)' =

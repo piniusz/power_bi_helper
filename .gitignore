@@ -1,0 +1,8 @@
+/.env
+.temp.py
+test_data
+test_data_backup
+__pycache__/
+.vscode
+*.__pycache__
+.logfire

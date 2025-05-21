@@ -1,0 +1,12 @@
+table Videos
+
+	column 'Video ID'
+
+	column Duration
+
+	column Views = 'some definition'
+
+	column 'Views total' = 'some definition'
+
+	/// Old Description
+	column 'Video name'

@@ -1,0 +1,8 @@
+table Videos
+
+	column 'Video ID'
+
+	column Duration
+
+	/// Old Description
+	column 'Video name'

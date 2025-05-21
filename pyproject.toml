@@ -1,0 +1,28 @@
+[project]
+name = "power_bi_helper"
+version = "0.1.0"
+description = ""
+authors = [
+    {name = "Michal K",email = "michalkoniecznu0292@gmail.com"}
+]
+readme = "README.md"
+requires-python = ">=3.11,<4.0"
+dependencies = [
+    "python-dotenv (>=1.1.0,<2.0.0)",
+    "ipykernel (>=6.29.5,<7.0.0)",
+    "pydantic (>=2.11.3,<3.0.0)",
+    "pandas (>=2.2.3,<3.0.0)",
+    "pytest (>=8.3.5,<9.0.0)",
+    "pytest-mock (>=3.14.0,<4.0.0)",
+    "tk (>=0.1.0,<0.2.0)",
+    "pydantic-ai[logfire] (>=0.1.10,<0.2.0)",
+    "devtools (>=0.12.2,<0.13.0)"
+]
+
+[tool.poetry]
+packages = [{include = "src"}]
+
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"
